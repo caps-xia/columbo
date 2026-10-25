@@ -1,0 +1,16 @@
+LICENSE
+  h_557c0f9a241549 1-201
+README.md
+  h_557c0f9a241549 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d90dff83fc8e7cfa9dab8b8981847b4e32007bbd",
+  "prompts": {},
+  "humans": {
+    "h_557c0f9a241549": {
+      "author": "jixing.xia <caps_xia@163.com>"
+    }
+  }
+}
