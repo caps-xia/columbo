@@ -1,0 +1,19 @@
+frontend/src/components/Markdown.tsx
+  s_6481cea1e62188::t_a34d8467e6cbce 1-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "57cf2577b0f3b5f9f38d8ed5191bda0d87c1ad5f",
+  "prompts": {},
+  "sessions": {
+    "s_6481cea1e62188": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b44ae38a-e34c-4246-8177-57372c85ec8b",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "jixing.xia <caps_xia@163.com>"
+    }
+  }
+}
