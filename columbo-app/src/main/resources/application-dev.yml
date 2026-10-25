@@ -1,0 +1,238 @@
+server:
+  port: 8080
+  # 只绑本机：默认不对局域网/公网暴露（本机访问 http://127.0.0.1:8080/app/）。
+  # 需要局域网访问时注释掉 address，并确认 auth.enabled=true 与服务暴露面
+  address: 127.0.0.1
+
+# ======== 登录鉴权（Sa-Token；用户来自 sys_user 表：用户名/姓名/BCrypt 密码）========
+# enabled=false 时全部接口免登录（本地联调/脚本直连），userId 用前端传参
+# seed 仅在 sys_user 表为空时初始化（改密码请直接 update sys_user 表，本配置不再生效）
+# 加账号：INSERT INTO sys_user(username, name, password_hash) VALUES ('用户名','姓名','<BCrypt哈希>')
+auth:
+  enabled: true
+  seed:
+    username: admin
+    name: admin
+    password: admin123
+
+sa-token:
+  token-name: satoken        # 前端请求头/查询参数名
+  timeout: 604800            # token 有效期 7 天（秒）
+  active-timeout: -1         # 不因无活动冻结
+  is-concurrent: true        # 同账号可多端在线
+  is-share: true             # 多端共用同一 token
+  token-style: uuid
+  is-log: false
+  is-read-cookie: false      # 前后端分离：仅 header/query 传 token
+
+spring:
+  config:
+    import:
+      # 按需导入 agent 配置模板；新增智能体时在此追加自己的 yml
+      - classpath:agent/log-code-troubleshoot.yml
+      # 直出版（单 agent 直出报告，不走两阶段工作流）：与上一条并存供切换对比
+      - classpath:agent/log-code-troubleshoot-direct.yml
+      # 数据库查询助手（可选）：想用只读库排查数据时放开下一行，并在 troubleshoot.database.connections 配连接
+      # - classpath:agent/db-query.yml
+  application:
+    name: columbo
+
+# 接口文档（Swagger UI）: http://localhost:8080/swagger-ui.html ，openapi 描述: /v3/api-docs
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+ai:
+  agent:
+    # 单个底层会话事件数超过该值自动换新上下文（防上下文无限膨胀），对前端 sessionId 透明
+    session-event-limit: 80
+    # 单会话事件内容总字符数超过该值也翻篇（防单个超大事件把请求撑爆）
+    session-content-limit-chars: 1000000
+    # 流停滞超时（秒）：模型流相邻块间隔超此值判定网关挂起，中断后走"仅零产出才重试"的安全重试，
+    # 重试耗尽降级非流式兜底；大上下文首 token 排队可达 1~3 分钟，阈值须高于它（0/负数关闭）
+    stream-stall-timeout-seconds: 240
+    # 会话压缩：翻篇前把旧会话用小模型压缩成【前情摘要】结转到新上下文（压缩优先、翻篇兜底）。
+    # 摘要失败（超时/未配置）自动降级普通翻篇，不阻断对话；摘要在翻篇路径上同步生成，注意 timeout-ms
+    session-compaction:
+      enabled: true
+      base-url: ${LLM_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+      completions-path: chat/completions
+      api-key: ${LLM_API_KEY:please-replace-your-api-key}   # 生产环境务必用环境变量注入
+      model: glm-4.7-flash              # 摘要无需深度思考，用便宜/免费的 flash 档即可
+      timeout-ms: 60000
+      max-transcript-chars: 100000        # 送入摘要模型的会话记录上限
+      max-summary-chars: 2000
+      min-events: 3                       # 少于该事件数不值得压缩
+    # 外部模型供应商注册表：agent yml 的 chat-model.models 可用「供应商key/模型名」限定写法引用
+    # （如 anthropic/claude-sonnet-4、zhipu/glm-4.6），不带前缀走 agent 自己的 ai-api 网关。
+    # 配置变更需重启；运行时在池内切换走 POST /api/v1/switch_agent_model 热切换。
+    # 示例（放开并填有效 key 即用）：
+    # providers:
+    #   zhipu:
+    #     api-format: openai                 # openai（OpenAI 兼容，默认）| anthropic（Anthropic Messages）
+    #     base-url: https://open.bigmodel.cn/api/paas/v4
+    #     api-key: ${ZHIPU_API_KEY:please-replace}
+    #   anthropic:
+    #     api-format: anthropic
+    #     base-url: https://api.anthropic.com
+    #     api-key: ${ANTHROPIC_API_KEY:please-replace}
+    # 处理器链（配置化责任链）：对话消息进入智能体前的确定性加工，
+    # 未配置时原样通过。处理器实现 PipelineProcessor<ChatPipelineContext> 并注册为 Spring Bean，
+    # 在此按 Bean 名顺序编排；处理器返回 false 可拦截本次对话
+    pipeline:
+      chain:
+        # 安全扫描：剥离不可见字符/ANSI、注入话术与凭证审计留痕，永不拦截消息
+        chat: [securityScanProcessor]
+    # 安全扫描的敏感词掩码（DFA：全角/大小写/停顿词变形均可命中），逗号分隔；留空=不启用
+    # security:
+    #   sensitive-words: 内部机密词A,内部机密词B
+    # 会话持久化：默认 H2 文件库（./data/agent_session，零外部依赖，重启自动恢复历史会话）。
+    # 生产/多服务共享换 MySQL：放开下面三行即可（表结构见 docs/dev-ops/mysql/sql/schema.sql，幂等可重复执行）。
+    session-store:
+      enabled: true
+      # url: jdbc:mysql://127.0.0.1:13306/agent_session?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&connectTimeout=3000&socketTimeout=10000
+      # username: root
+      # password: 123456
+
+# 日志
+logging:
+  level:
+    root: info
+  config: classpath:logback-spring.xml
+
+# ======== 排查助手业务配置 ========
+troubleshoot:
+  # 腾讯云日志服务 CLS（https://cloud.tencent.com/product/cls）
+  # 密钥：在腾讯云访问管理 CAM 建子账号，建议仅授 CLS 只读 QcloudCLSReadOnlyAccess，用环境变量注入
+  # 主题可自动同步：启动时 + POST /api/v1/cls_topics_sync 会按日志集拉取全部 TopicName 注册（无需手填 topics）
+  # 日志格式：JSON（trace_id/log_level/message/class/timestamp + __TAG__.env 环境标签），
+  # 环境隔离默认靠 __TAG__.env 标签（product/qa 同主题混存，网关强制拼过滤）；站点主题若按环境独立可配 env-tag-key: ""
+  cls:
+    enabled: true
+    secret-id: ${TENCENT_CLOUD_SECRET_ID:please-replace}
+    secret-key: ${TENCENT_CLOUD_SECRET_KEY:please-replace}
+    endpoint: cls.tencentcloudapi.com
+    env: product
+    sites:
+      # 站点=一套独立的 CLS 日志集（按业务/地域/账号划分，可配多个；key 随意）
+      demo:
+        label: "演示站点"
+        region: ap-guangzhou
+        logset-id: "your-logset-id"        # CLS 控制台「日志集」页可查
+        env: product
+        # 主题注册表（key=TopicName 即应用名；自动同步开启后可不配 topics）：
+        # name/aliases 供模型按中文别名路由，topicId 来自 CLS 控制台或 DescribeTopics
+        topics:
+          "[myapp.java.order]":
+            name: "订单服务"
+            aliases: ["订单"]
+            topic-id: "please-replace-or-auto-sync"
+          "[myapp.java.user]":
+            name: "用户服务"
+            aliases: ["用户"]
+            topic-id: "please-replace-or-auto-sync"
+          "[myapp.java.pay]":
+            name: "支付服务"
+            aliases: ["支付", "支付网关"]
+            topic-id: "please-replace-or-auto-sync"
+
+  # 数据库只读查询（可选能力，MySQL JDBC 直连，只允许 SELECT/SHOW/DESC/EXPLAIN，写操作直接拒绝）
+  # 两个用法：① 排查助手的数据核查（【数据核查】步骤自动可用）；② 独立的数据库查询助手 100012
+  # （放开 spring.config.import 里的 agent/db-query.yml 即装配）。配好连接即生效——
+  # 强烈建议连接只读从库/只读账号
+  database:
+    max-rows: 200
+    timeout-seconds: 20
+    connections:
+      # replica_main:
+      #   label: "主库只读从库 · 生产"
+      #   host: your-readonly-replica.mysql.example.com
+      #   port: "3306"
+      #   database: your_db
+      #   user: readonly_user
+      #   password: ${DB_PWD_REPLICA_MAIN:please-replace}
+
+  # 图片识别（多模态模型）：用户贴图 → 先识别提取文字 → 并入排查问题（ChatService.enhanceMessage）
+  # reasoning_effort=low 关思考后常规截图 ~5-15s；timeout-ms 是安全余量，别低于 60s
+  # 默认智谱免费视觉模型 glm-4.6v-flash；其他 OpenAI 兼容多模态网关同理替换
+  image-understanding:
+    enabled: true
+    base-url: ${LLM_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+    completions-path: chat/completions
+    api-key: ${LLM_API_KEY:please-replace-your-api-key}   # 生产环境务必用环境变量注入
+    model: glm-4.6v-flash
+    timeout-ms: 90000
+    max-images: 4
+    max-image-bytes: 5242880
+  # 本地知识库（排查经验闭环：检索历史案例 + 速记沉淀进收件箱，库内 AGENTS.md 定义分拣/体检自运转）
+  knowledge:
+    root-path: ./data/knowledge
+    write-enabled: true
+    max-results: 5
+    max-file-bytes: 262144
+    inbox-dir: 00-Inbox
+    # RAG 混合检索（向量+关键词 RRF 融合）：
+    # embeddings-url 指向支持 Embeddings 的服务后向量检索才生效；未配置/不支持时自动熔断，检索退化为纯关键词。
+    # 可选服务示例（二选一，key 需自行申请）：
+    #   智谱开放平台:  https://open.bigmodel.cn/api/paas/v4/embeddings   模型 embedding-3
+    #   SiliconFlow:   https://api.siliconflow.cn/v1/embeddings          模型 BAAI/bge-m3
+    vector-search-enabled: true
+    embeddings-url: ""
+    embeddings-api-key: ${EMBEDDINGS_API_KEY:}
+    embeddings-model: embedding-3
+  # 本地代码副本（日志+代码联合排查用）：把你的工程 clone 到一个目录，排查助手只读访问
+  code-analysis:
+    # 默认代码根目录（未指明环境时读这里）
+    root-path: ./code
+    # 代码副本每日自动更新（仅对当前分支 git pull --ff-only，不改分支；时间见 refresh-cron）。
+    # 手动补拉可随时 POST /api/v1/code_repo_refresh
+    refresh-enabled: false
+    refresh-cron: "0 30 7 * * ?"
+    # 工程注册表：key=根目录下的工程目录名，description 帮助模型理解工程用途
+    projects:
+      order-service:
+        description: "订单服务（Spring Boot：下单/购物车/订单状态/履约）"
+      user-service:
+        description: "用户服务（Spring Boot：注册登录/会员信息/账号）"
+    # 话术路由词典：环境词/业务线口语 → CLS 应用 + 本地代码位置（resolveRouting 工具使用）
+    routing:
+      environments:
+        - name: "生产环境"
+          keywords: ["生产", "prod", "线上"]
+          # CLS 应用名前缀：完整应用名 = 前缀 + "." + 站点 app-suffix（须与 CLS TopicName 一致）
+          cls-app-prefix: "myapp.java"
+          code-path: "./code"
+          code-branch: "master"
+          note: "日志走腾讯云CLS（queryClsLog/countClsLog）"
+        - name: "测试环境"
+          keywords: ["测试", "qa", "预发"]
+          cls-app-prefix: "myapp.java"
+          # 测试环境可以是另一套代码副本目录（分支不同）；不配 code-path 则回落默认 root-path
+          code-path: "./code"
+          code-branch: "qa"
+      business-lines:
+        - name: "订单交易"
+          keywords: ["订单", "下单", "支付", "退款", "购物车", "回调"]
+          description: "下单/订单状态/支付退款/回调通知"
+          stations:
+            - name: "订单服务"
+              role: "下单/订单状态/履约"
+              app-suffix: "order"
+              local-project: "order-service"
+              search-hints: "OrderController、OrderService、下单 placeOrder、退款 refund"
+            - name: "支付服务"
+              role: "支付发起/回调/退款"
+              app-suffix: "pay"
+              local-project: "order-service"
+              search-hints: "PayGateway、PayCallback、回调 notify"
+        - name: "用户账号"
+          keywords: ["用户", "登录", "注册", "账号", "会员", "密码"]
+          description: "注册登录/会员信息/账号状态"
+          stations:
+            - name: "用户服务"
+              role: "注册登录/会员信息"
+              app-suffix: "user"
+              local-project: "user-service"
+              search-hints: "UserController、login、register"

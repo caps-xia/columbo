@@ -1,0 +1,32 @@
+# ===== 构建产物 =====
+target/
+frontend/dist/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ===== 运行时数据（会话库/日志，启动后自动生成）=====
+/data/
+/tars-app/data/
+*.mv.db
+*.trace.db
+*.log
+
+# ===== 前端 =====
+node_modules/
+frontend/node_modules/
+.vite/
+
+# ===== IDE / 编辑器 =====
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# ===== 操作系统 =====
+.DS_Store
+Thumbs.db
+
+# ===== JVM 崩溃转储 =====
+hs_err_pid*
+replay_pid*

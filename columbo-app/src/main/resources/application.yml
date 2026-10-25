@@ -1,0 +1,23 @@
+spring:
+  profiles:
+    active: dev
+  autoconfigure:
+    # 项目不配全局 spring.datasource：会话持久化开启时由 SessionStoreMybatisConfig 自建独立连接池 +
+    # 显式 SqlSessionFactory（多数据源分包绑定形态），关闭时无任何数据源。排除 Boot/MP 的数据源自动装配，
+    # 避免 classpath 有 JDBC 驱动时启动报错、以及 MP 自动配置与显式 factory 重复。
+    exclude: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          # /app 静态资源默认 no-cache（index.html 等入口每次协商）；带内容哈希的
+          # /app/assets/** 在 WebMvcConfig 里单独设一年 immutable
+          no-cache: true
+
+server:
+  # JSON 接口响应 gzip：会话列表/日志结果等文本压缩率高，弱网/远程访问明显提速。
+  # 不含 text/event-stream，SSE 流式不受影响
+  compression:
+    enabled: true
+    mime-types: application/json,text/plain,text/html,text/css,application/javascript
+    min-response-size: 2048

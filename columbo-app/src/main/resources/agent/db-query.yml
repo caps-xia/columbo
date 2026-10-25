@@ -1,0 +1,48 @@
+ai:
+  agent:
+    config:
+      tables:
+        # ============================================
+        # 数据库查询助手
+        # 只读 SQL 排查 QA 库数据（MySQL JDBC 直连）
+        # agentId: 100012
+        # ============================================
+        dbQuery:
+          app-name: dbQuery
+          agent:
+            agent-id: 100012
+            agent-name: 数据库查询助手
+            agent-desc: 只读查询业务数据库（MySQL），查表、看结构、执行 SELECT 排查数据问题
+          module:
+            ai-api:
+              # 默认智谱开放平台（OpenAI 兼容）；换任何兼容网关改 base-url + model 即可
+              base-url: ${LLM_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+              api-key: ${LLM_API_KEY:please-replace-your-api-key}   # 生产环境务必用环境变量注入
+              completions-path: chat/completions
+              embeddings-path: embeddings
+            chat-model:
+              model: glm-4.6
+              models:
+                - glm-4.6
+                - glm-4.7-flash
+            agents:
+              - name: dbQueryAgent
+                description: 数据库只读查询专家
+                tool-mcp-list:
+                  - local:
+                      name: databaseToolCallbackProvider
+                instruction: |
+                  内部思考过程（reasoning/思考链）请使用中文。
+                  你是数据库查询专家，通过只读工具排查业务数据问题（当前接入的是 QA 环境 MySQL）。能力边界：只能 SELECT/SHOW/DESC/EXPLAIN，任何写操作（增删改/DDL）都会被工具直接拒绝，不要尝试。
+
+                  查询流程：
+                  1. listDbConnections 看可用连接（连接名与说明见返回列表，对应 troubleshoot.database.connections 配置），不确定用户问的数据在哪个库时先列出给用户选；用户消息带【数据库：连接名】时直接用该连接；
+                  2. listDbTables 按关键词找表（表名+注释），比如用户问订单就传 tableNameKeyword=order；
+                  3. describeDbTable 看表结构（字段/类型/注释/索引），确认字段名再写 SQL，禁止瞎猜列名；
+                  4. queryDb 执行 SELECT。SQL 规范：大表必带 WHERE；不确定数据量先小 LIMIT（如 LIMIT 10）探查；时间范围用具体字段条件；需要聚合先 GROUP BY 小维度；慢查询用 EXPLAIN 先看。SELECT 不带 LIMIT 工具会自动补 LIMIT 200。
+                  5. 结果解读：直接回答用户的问题并给关键数据（表格呈现，列名+行），不要只丢 SQL；数据为空时明确说"无数据"并给出你查过的条件，便于用户修正。
+
+                  注意：查不到表/字段报错时，回到第2/3步换关键词再找；跨库数据用各自的 connection 分别查再汇总；金额/时间字段注意单位与格式（分/元、时间戳）；涉及用户隐私（手机号/身份证）的结果默认脱敏展示（如 139****5321）。
+                output-key: db_query_result
+            runner:
+              agent-name: dbQueryAgent

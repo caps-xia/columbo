@@ -1,0 +1,323 @@
+@import 'tailwindcss';
+@import 'highlight.js/styles/github-dark.css';
+
+/* darkMode: 'class'（Tailwind 4 自定义变体写法） */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 设计令牌 → Tailwind 工具类（inline：保留 rgb(var()/alpha) 形态，透明度修饰符可用） */
+@theme inline {
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #dfe9ff;
+  --color-brand-200: #c5d6ff;
+  --color-brand-300: #a2baff;
+  --color-brand-400: #7d95fb;
+  --color-brand-500: #5e73f4;
+  --color-brand-600: #4453e8;
+  --color-brand-700: #3742cf;
+  --color-brand-800: #2f39a8;
+  --color-brand-900: #2c3585;
+
+  /* 语义表面色（RGB 变量，亮/暗两套值在 @layer base 切换） */
+  --color-surface-app: rgb(var(--surface-app));
+  --color-surface-panel: rgb(var(--surface-panel));
+  --color-surface-raise: rgb(var(--surface-raise));
+  --color-surface-card: rgb(var(--surface-card));
+  --color-surface-input: rgb(var(--surface-input));
+
+  /* 语义文字色 */
+  --color-content-primary: rgb(var(--content-primary));
+  --color-content-secondary: rgb(var(--content-secondary));
+  --color-content-muted: rgb(var(--content-muted));
+  --color-content-faint: rgb(var(--content-faint));
+
+  /* 语义边线色 */
+  --color-line: rgb(var(--line));
+  --color-line-strong: rgb(var(--line-strong));
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+
+  /* 高程阶梯：xs(贴面) → soft(卡片静置) → panel(浮层) → lg(模态)；
+     brand / brand-lg 为品牌色辉光，仅用于主按钮与输入区聚焦态 */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-soft: 0 2px 12px rgba(15, 23, 42, 0.06);
+  --shadow-panel: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.14);
+  --shadow-brand: 0 6px 20px rgba(94, 115, 244, 0.32);
+  --shadow-brand-lg: 0 12px 32px rgba(94, 115, 244, 0.4);
+
+  --animate-fade-in-up: fade-in-up 0.3s ease-out both;
+  --animate-shake: shake 0.4s ease-in-out;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-blink: blink 1s step-end infinite;
+  --animate-toast-in: toast-in 0.25s ease-out both;
+  --animate-float-slow: float-slow 14s ease-in-out infinite;
+  --animate-float-slower: float-slower 22s ease-in-out infinite;
+}
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes toast-in {
+  0% { opacity: 0; transform: translateY(10px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* 表单校验失败时的水平抖动提醒 */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+/* 登录页极光背景的漂移动画 */
+@keyframes float-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(60px, -40px) scale(1.12); }
+  66% { transform: translate(-40px, 30px) scale(0.95); }
+}
+@keyframes float-slower {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-70px, 50px) scale(1.18); }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  :root {
+    /* 亮色语义令牌（RGB 三元组，tailwind 用 rgb(var(--x)/<alpha>) 引用） */
+    --surface-app: 241 245 249;
+    --surface-panel: 255 255 255;
+    --surface-raise: 248 250 252;
+    --surface-card: 255 255 255;
+    --surface-input: 252 251 248;
+    --content-primary: 15 23 42;
+    --content-secondary: 71 85 105;
+    --content-muted: 100 116 139;
+    --content-faint: 148 163 184;
+    --line: 226 232 240;
+    --line-strong: 203 213 225;
+    --shadow-panel-color: rgba(15, 23, 42, 0.08);
+  }
+  .dark {
+    /* 暗色语义令牌 */
+    --surface-app: 11 15 24;
+    --surface-panel: 17 24 39;
+    --surface-raise: 30 41 59;
+    --surface-card: 24 33 52;
+    --surface-input: 22 30 47;
+    --content-primary: 226 232 240;
+    --content-secondary: 148 163 184;
+    --content-muted: 148 163 184;
+    --content-faint: 100 116 139;
+    --line: 39 51 68;
+    --line-strong: 51 65 85;
+    --shadow-panel-color: rgba(0, 0, 0, 0.45);
+  }
+  body {
+    @apply bg-surface-app text-content-primary antialiased;
+  }
+  /* 键盘可达性：按钮/链接仅在键盘聚焦时显示 focus ring。
+     注意不要给 input/select/textarea 加全局 ring——浏览器对文本类控件
+     鼠标点击也会命中 :focus-visible，会导致点击输入框/下拉就出现一圈框。 */
+  button:focus-visible,
+  a:focus-visible,
+  [role='button']:focus-visible {
+    @apply outline-hidden ring-2 ring-brand-500/50 ring-offset-1 ring-offset-surface-app;
+  }
+}
+
+@layer components {
+  /* 细滚动条（亮/暗自适应） */
+  .thin-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .thin-scroll::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-content-faint;
+  }
+  .thin-scroll::-webkit-scrollbar-thumb:hover {
+    @apply bg-content-muted;
+  }
+  .thin-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  /* 等宽数字（时间戳/页码/耗时） */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  /* 毛玻璃卡片（登录页/弹层用） */
+  .glass {
+    background: rgb(var(--surface-panel) / 0.72);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  }
+  /* 骨架屏微光 */
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-surface-raise;
+  }
+
+  /* ---- 按钮规范（内边距/高度由调用处按场景设定，这里统一颜色/圆角/字重/运动） ----
+     .btn-primary：实心主按钮（纯品牌色 + 辉光，替代此前的渐变按钮）；
+     .btn-ghost  ：描边次级按钮；禁用态两套各自收敛，避免各处手写不一致。 */
+  .btn-primary {
+    @apply inline-flex select-none items-center justify-center gap-1.5 rounded-full bg-brand-600 font-semibold text-white shadow-soft transition-all hover:bg-brand-500 hover:shadow-brand disabled:cursor-not-allowed disabled:bg-content-faint/40 disabled:text-content-muted disabled:shadow-none;
+  }
+  .btn-ghost {
+    @apply inline-flex select-none items-center justify-center gap-1.5 rounded-full border border-line bg-surface-panel font-medium text-content-secondary transition-colors hover:bg-surface-raise hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-50;
+  }
+}
+
+/* Markdown 渲染排版（assistant 消息与产物预览共用，颜色走语义令牌自动适配暗色）。
+   字号档位：html[data-fontscale] 控制正文基准字号（小 13px / 中 14px / 大 15.5px），
+   内部标题/代码/表格用 em 相对缩放，随档位联动。 */
+.md-body {
+  @apply text-content-primary;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+html[data-fontscale='small'] .md-body {
+  font-size: 0.8125rem;
+}
+html[data-fontscale='large'] .md-body {
+  font-size: 0.96875rem;
+}
+.md-body > *:first-child {
+  margin-top: 0;
+}
+.md-body h1 {
+  @apply mb-2 mt-4 font-bold text-balance text-content-primary;
+  font-size: 1.25em;
+}
+.md-body h2 {
+  @apply mb-2 mt-4 font-bold text-balance text-content-primary;
+  font-size: 1.1em;
+}
+.md-body h3 {
+  @apply mb-1.5 mt-3 text-sm font-semibold text-content-primary;
+  font-size: 1em;
+}
+.md-body h4 {
+  @apply mb-1.5 mt-2 text-sm font-semibold text-content-primary;
+  font-size: 1em;
+}
+.md-body p {
+  @apply my-2;
+}
+.md-body ul {
+  @apply my-2 list-disc space-y-1 pl-5;
+}
+.md-body ol {
+  @apply my-2 list-decimal space-y-1 pl-5;
+}
+.md-body li::marker {
+  @apply text-brand-500;
+}
+.md-body a {
+  @apply font-medium text-brand-500 underline decoration-brand-300 underline-offset-2 hover:text-brand-400;
+}
+.md-body blockquote {
+  @apply my-2.5 border-l-4 border-brand-300/60 bg-surface-raise py-1 pl-4 pr-3 text-content-secondary;
+}
+.md-body code {
+  @apply break-words rounded bg-surface-raise px-1.5 py-0.5 font-mono text-rose-500;
+  font-size: 0.9em;
+}
+.md-body pre {
+  @apply my-2.5 overflow-hidden rounded-xl bg-slate-900 p-0 leading-6 dark:bg-black/60;
+  font-size: 0.9em;
+}
+/* 超长代码块限高滚动：单块最多约 24 行，避免一屏被一个代码块占满 */
+.md-body pre code {
+  @apply block bg-transparent p-3.5 text-slate-100;
+  max-height: 26rem;
+  overflow-y: auto;
+}
+/* highlight.js 令牌色（github-dark 主题）在透明底上直接生效 */
+.md-body pre code.hljs {
+  padding: 0.875rem;
+  background: transparent;
+}
+.md-body table {
+  @apply my-2.5 w-full border-collapse;
+}
+/* 宽表横向滚动保护：外层滚动容器，表格本身按内容自然宽（不压缩） */
+.md-table-wrap {
+  @apply my-2.5 overflow-x-auto rounded-lg;
+}
+.md-table-wrap table {
+  @apply my-0 w-max min-w-full border-collapse overflow-hidden rounded-lg;
+  font-size: 0.93em;
+}
+.md-body th {
+  @apply border border-line bg-surface-raise px-2.5 py-1.5 text-left font-semibold text-content-secondary;
+}
+.md-body td {
+  @apply border border-line px-2.5 py-1 align-top;
+}
+.md-body tr:nth-child(even) td {
+  @apply bg-surface-raise/40;
+}
+.md-body hr {
+  @apply my-3 border-line;
+}
+/* 图片：不超出正文栏，圆角贴齐卡片语言；与文字留出呼吸 */
+.md-body img {
+  @apply my-2 max-w-full rounded-xl;
+}
+.md-body strong {
+  @apply font-semibold text-content-primary;
+}
+
+/* 代码块外壳（Markdown.tsx 的代码卡：语言标签 + 复制按钮） */
+.code-card {
+  @apply my-2.5 overflow-hidden rounded-xl border border-line/70 bg-slate-900 dark:bg-black/60;
+}
+.code-card-bar {
+  @apply flex items-center justify-between border-b border-white/10 px-3 py-1.5;
+}
+.code-card-lang {
+  @apply font-mono text-[10.5px] uppercase tracking-wider text-slate-400;
+}
+.code-card-copy {
+  @apply flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-100;
+}
+
+/* 思考面板的流光效果 */
+.thinking-shimmer {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.35) 0%, rgba(139, 92, 246, 0.75) 50%, rgba(99, 102, 241, 0.35) 100%);
+  background-size: 200% 100%;
+  @apply animate-shimmer;
+}
+
+/* 登录页极光背景：径向渐变光斑（自带柔边）缓慢漂移，不叠加 blur 滤镜以降低合成开销 */
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  opacity: 0.5;
+  will-change: transform;
+}
+
+/* 无障碍：尊重 prefers-reduced-motion，关闭装饰性动画/过渡（taste-skill §6.B 强制项）。
+   覆盖所有装饰性无限动画（极光漂移、shimmer、blink、骨架 pulse、spin）与入场过渡，
+   对开启"减少动态效果"的用户退化为静态/瞬时。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

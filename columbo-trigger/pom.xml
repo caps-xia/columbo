@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.caps</groupId>
+        <artifactId>columbo</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>columbo-trigger</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Sa-Token 登录鉴权（Boot 4 线 starter；后续接公司统一登录时换认证实现，token 会话层不变） -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-spring-boot4-starter</artifactId>
+            <version>${sa-token.version}</version>
+        </dependency>
+        <!-- @Valid 参数校验（hibernate-validator 实现） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <!-- 接口文档：/v3/api-docs + /swagger-ui.html，注解（@Tag/@Operation）随依赖提供 -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+        <!-- 测试：MockMvc standalone 验证接口行为（参数校验/统一异常/业务码），不依赖网络与密钥 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- 系统模块 -->
+        <dependency>
+            <groupId>org.caps</groupId>
+            <artifactId>columbo-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.caps</groupId>
+            <artifactId>columbo-types</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.caps</groupId>
+            <artifactId>columbo-domain</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>
